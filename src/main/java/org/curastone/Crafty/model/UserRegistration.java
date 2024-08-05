@@ -29,4 +29,7 @@ public class UserRegistration {
 
   @JsonProperty("email")
   private String email;
+
+  @JsonProperty("password")
+  private String password;
 }
