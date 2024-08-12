@@ -1,120 +1,93 @@
+// package org.curastone.Crafty.controller;
+//
+// import java.util.HashMap;
+// import java.util.Map;
+// import org.bson.types.ObjectId;
+// import org.curastone.Crafty.dao.CourseDao;
+// import org.curastone.Crafty.model.Course;
+// import org.curastone.Crafty.service.*;
+// import org.springframework.beans.factory.annotation.Autowired;
+// import org.springframework.web.bind.annotation.*;
+//
+// @RestController
+//// @RequestMapping("/course")
+// public class CourseController {
+//
+//  @Autowired private CourseDao courseDao;
+//
+//  @PostMapping("/course")
+//  public Map<String, String> createCourse(@RequestBody Course course) {
+//    // Initialize empty steps for the course rn
+//    Map<String, String> steps = new HashMap<>();
+//    steps.put("note", null);
+//    steps.put("slides", null);
+//    steps.put("script", null);
+//    steps.put("voice_over", null);
+//    steps.put("video", null);
+//
+//    //    course.setSteps(steps);
+//    //    Course savedCourse = courseDao.save(course);
+//
+//    // Map<String, String> response = new HashMap<>();
+//    // response.put("course_id", savedCourse.getId().toString());
+//    return steps;
+//  }
+//
+//  @GetMapping("/course/{id}")
+//  public Map<String, Object> getCourse(@PathVariable ObjectId id) {
+//    Course course = courseDao.findById(id).orElse(null);
+//    if (course == null) {
+//      return new HashMap<>();
+//    }
+//
+//    Map<String, Object> response = new HashMap<>();
+//    response.put("course_type", course.getType());
+//    response.put("steps", course.getSteps());
+//    return response;
+//  }
+// }
+
 package org.curastone.Crafty.controller;
 
-import io.swagger.annotations.ApiParam;
+import java.util.Map;
 import org.bson.types.ObjectId;
-import org.curastone.Crafty.exception.ResourceNotFoundException;
 import org.curastone.Crafty.model.Course;
-import org.curastone.Crafty.model.Course.CourseType;
-import org.curastone.Crafty.service.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.curastone.Crafty.service.CourseService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/courses")
+@RequestMapping("/course")
 public class CourseController {
+
   private final CourseService courseService;
 
-  @Autowired
   public CourseController(CourseService courseService) {
-
     this.courseService = courseService;
   }
 
-  @PostMapping("/add/{userId}")
-  public ResponseEntity<?> addCourse(@PathVariable ObjectId userId, @RequestBody Course course) {
-    try {
-      Course newCourse = courseService.addCourse(userId, course);
-      return ResponseEntity.ok(newCourse);
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
-    }
+  @PostMapping
+  public ResponseEntity<?> createCourse(@RequestBody Course course) {
+    Course savedCourse = courseService.createCourse(course);
+    return ResponseEntity.ok()
+        .body(
+            "{\"course_id\":\""
+                + savedCourse.getId().toString()
+                + "\"}"
+                + "{\"steps\":\""
+                + savedCourse.getSteps()
+                + "\"}");
   }
 
-  /**
-   * Fetches a specific course based on its unique ID.
-   *
-   * @param courseId the ID of the course to be retrieved
-   * @return a ResponseEntity containing the details of the specified course, or a 404 Not Found
-   *     status if the course is not found
-   */
-  @GetMapping("/{courseId}")
-  public ResponseEntity<?> getCourseByCourseId(
-      @ApiParam(required = true) @PathVariable ObjectId courseId) {
-    try {
-      Course course = courseService.getCourseById(courseId);
-      // authenticateService.checkCourseOwnership(course);
-      return ResponseEntity.ok(course);
-    } catch (AccessDeniedException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (ResourceNotFoundException e) {
-      return ResponseEntity.notFound().build();
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
-    }
+  @GetMapping("/{id}")
+  public ResponseEntity<?> getCourse(@PathVariable("id") ObjectId courseId) {
+    Course course = courseService.getCourse(courseId);
+    return ResponseEntity.ok().body(buildCourseResponse(course));
   }
 
-  /**
-   * Fetches all courses associated with a specific user, excluding courses with a "Deleted" status.
-   *
-   * @param userId the ID of the user for which to retrieve courses
-   * @return a ResponseEntity containing a list of courses for the specified user, or a 404 Not
-   *     Found status if no courses are found
-   */
-  @GetMapping("/byUser/{userId}")
-  public ResponseEntity<?> getCoursesByUserId(
-      @ApiParam(required = true) @PathVariable ObjectId userId) {
-    try {
-      // authenticateService.checkUserOwnership(userId);
-      return ResponseEntity.ok(courseService.getCoursesByUserIdExcludingDeleted(userId));
-    } catch (AccessDeniedException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
-    }
-  }
-
-  /**
-   * Fetches the number of courses created by a specific user, including deleted courses.
-   *
-   * @param userId the user ID
-   * @return the number of courses created by the user
-   */
-  @GetMapping("/createdCountByUser/{userId}")
-  public ResponseEntity<?> getCreatedCourseCountByUserId(
-      @ApiParam(required = true) @PathVariable ObjectId userId) {
-    try {
-      // authenticateService.checkUserOwnership(userId);
-      return ResponseEntity.ok(courseService.getCreatedCourseCountByUserId(userId));
-    } catch (AccessDeniedException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
-    }
-  }
-
-  /**
-   * Fetches the number of courses created by a specific user and course type, including deleted
-   * courses.
-   *
-   * @param userId the user ID
-   * @param courseType the course type
-   * @return the number of courses created
-   */
-  @GetMapping("/createdCountByUser/{userId}/{courseType}")
-  public ResponseEntity<?> getCreatedCourseCountByUserIdAndCourseType(
-      @ApiParam(required = true) @PathVariable ObjectId userId,
-      @ApiParam(required = true) @PathVariable CourseType courseType) {
-    try {
-      // authenticateService.checkUserOwnership(userId);
-      return ResponseEntity.ok(
-          courseService.getCreatedCourseCountByUserIdAndCourseType(userId, courseType));
-    } catch (AccessDeniedException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
-    } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(e.getMessage());
-    }
+  private Map<String, Object> buildCourseResponse(Course course) {
+    return Map.of(
+        "course_type", course.getType(),
+        "steps", course.getSteps());
   }
 }

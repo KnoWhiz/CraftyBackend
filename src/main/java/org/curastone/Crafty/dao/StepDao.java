@@ -1,8 +1,8 @@
 package org.curastone.Crafty.dao;
 
-import org.curastone.Crafty.model.Note;
+import org.curastone.Crafty.model.Step;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface NoteDao extends MongoRepository<Note, String> {}
+public interface StepDao extends MongoRepository<Step, String> {}
