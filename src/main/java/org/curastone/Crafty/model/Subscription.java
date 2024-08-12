@@ -19,6 +19,4 @@ public class Subscription {
 
   @JsonProperty("type")
   private String type; // Basic, Plus, Premium
-
-  // Getters and Setters
 }

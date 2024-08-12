@@ -1,7 +1,6 @@
 package org.curastone.Crafty.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,24 +11,35 @@ import org.curastone.Crafty.dao.util.ObjectIdSerializer;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection = "users")
+import java.util.Map;
+
 @Data
 @Builder(toBuilder = true)
-@JsonDeserialize(builder = UserRegistration.UserRegistrationBuilder.class)
+// @JsonDeserialize(builder = User.UserBuilder.class)
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserRegistration {
+@Document(collection = "steps")
+public class Step {
   @Id
   @JsonProperty("id")
   @JsonSerialize(using = ObjectIdSerializer.class)
   private ObjectId id;
 
-  @JsonProperty("name")
-  private String name;
+  @JsonProperty("courseId")
+  private ObjectId courseId;
 
-  @JsonProperty("email")
-  private String email;
+  @JsonProperty("stepType")
+  private String stepType; // CHAPTER, SECTION, NOTE, SLIDE, SCRIPT, VOICE_OVER, VIDEO
 
-  @JsonProperty("password")
-  private String password;
+  @JsonProperty("stepStatus")
+  private String stepStatus; // IN QUEUE, IN PROGRESS, SUCCEED, FAILED
+
+  @JsonProperty("parameters")
+  private Map<String, String> parameters;
+
+  @JsonProperty("result")
+  private String result;
+
+  @JsonProperty("jobId")
+  private String jobId;
 }
