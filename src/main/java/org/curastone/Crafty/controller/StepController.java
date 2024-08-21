@@ -13,31 +13,37 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/step")
 public class StepController {
 
-  @Autowired private StepDao stepDao;
+  private final StepDao stepDao;
+  private final AzureBatchService azureBatchService;
 
-  @Autowired private AzureBatchService azureBatchService;
+  @Autowired
+  public StepController(StepDao stepDao, AzureBatchService azureBatchService) {
+    this.stepDao = stepDao;
+    this.azureBatchService = azureBatchService;
+  }
 
   @PostMapping
   public Map<String, String> submitStep(@RequestBody Step step) throws IOException {
-    // TODO: check params
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
-
-    // TODO: will azure provide jobId??
     String jobId =
         "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
-
-    // Create a job on Azure Batch
+    String taskId = "taskId-" + jobId;
     try {
-      azureBatchService.createBatchJob(jobId, "your-pool-id");
+      azureBatchService.createBatchJob(jobId);
+      String commandLine =
+          "step " + step.getStepType() + " --topic '" + step.getParameters().get("topic") + "'";
+      azureBatchService.submitTask(jobId, taskId, commandLine);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to create batch job", e);
+      throw new RuntimeException("Failed to create batch job and task", e);
     }
+
     Step savedStep = stepDao.save(step.toBuilder().jobId(jobId).build());
     Map<String, String> response = new HashMap<>();
     response.put("step_id", savedStep.getId().toString());
     response.put("job_id", savedStep.getJobId());
+    response.put("task_id", taskId);
     return response;
   }
 
