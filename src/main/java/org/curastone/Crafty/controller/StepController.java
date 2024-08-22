@@ -1,9 +1,7 @@
 package org.curastone.Crafty.controller;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-import org.curastone.Crafty.dao.StepDao;
 import org.curastone.Crafty.model.Step;
 import org.curastone.Crafty.service.AzureBatchService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,17 +11,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/step")
 public class StepController {
 
-  private final StepDao stepDao;
   private final AzureBatchService azureBatchService;
 
   @Autowired
-  public StepController(StepDao stepDao, AzureBatchService azureBatchService) {
-    this.stepDao = stepDao;
+  public StepController(AzureBatchService azureBatchService) {
     this.azureBatchService = azureBatchService;
   }
 
   @PostMapping
-  public Map<String, String> submitStep(@RequestBody Step step) throws IOException {
+  public Map<String, String> submitStep(@RequestBody Step step) {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
@@ -39,7 +35,8 @@ public class StepController {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
 
-    Step savedStep = stepDao.save(step.toBuilder().jobId(jobId).build());
+    step = step.toBuilder().jobId(jobId).build();
+    Step savedStep = azureBatchService.saveStep(step);
     Map<String, String> response = new HashMap<>();
     response.put("step_id", savedStep.getId().toString());
     response.put("job_id", savedStep.getJobId());
@@ -49,18 +46,14 @@ public class StepController {
 
   @GetMapping("/{id}")
   public Map<String, Object> getStepStatus(@PathVariable String id) { // input is stepId, not jobId
-    Step step = stepDao.findById(id).orElse(null);
-    if (step == null) {
-      throw new IllegalArgumentException("Step not found");
-    }
+    Step step = azureBatchService.findStepById(id);
     // Fetch job status from Azure Batch
     String batchJobStatus = azureBatchService.getJobStatus(step.getJobId());
     // String batchJobStatus = "TRUE";
     step.setStepStatus(batchJobStatus);
     // TODO: get result from batch (do we still need that?)
     step.setResult("");
-    stepDao.save(step);
-
+    azureBatchService.saveStep(step);
     Map<String, Object> response = new HashMap<>();
     response.put("step_status", step.getStepStatus());
 

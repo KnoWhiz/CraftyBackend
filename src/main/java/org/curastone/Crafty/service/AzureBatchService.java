@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.curastone.Crafty.config.AzureBatchConfig;
+import org.curastone.Crafty.dao.StepDao;
+import org.curastone.Crafty.model.Step;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -26,9 +28,10 @@ public class AzureBatchService {
   private final String containerRunOptions;
   private final String openaiApiKey;
 
+  private final StepDao stepDao;
   private BatchClient batchClient;
 
-  public AzureBatchService(AzureBatchConfig azureBatchConfig) {
+  public AzureBatchService(AzureBatchConfig azureBatchConfig, StepDao stepDao) {
     this.batchUrl = azureBatchConfig.getBatchUrl();
     this.batchAccountName = azureBatchConfig.getBatchAccountName();
     this.batchAccountKey = azureBatchConfig.getBatchAccountKey();
@@ -36,6 +39,7 @@ public class AzureBatchService {
     this.containerImage = azureBatchConfig.getContainerImage();
     this.containerRunOptions = azureBatchConfig.getContainerRunOptions();
     this.openaiApiKey = azureBatchConfig.getOpenaiApiKey();
+    this.stepDao = stepDao;
     initializeBatchClient();
   }
 
@@ -64,10 +68,6 @@ public class AzureBatchService {
     }
   }
 
-  //  public String getJobStatus(String jobId) {
-  //    CloudJob job = batchClient.jobOperations().getJob(jobId);
-  //    return job.state().toString();
-  //  }
   public String getJobStatus(String jobId) {
     try {
       CloudJob job = batchClient.jobOperations().getJob(jobId);
@@ -106,5 +106,13 @@ public class AzureBatchService {
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch task", e);
     }
+  }
+
+  public Step saveStep(Step step) {
+    return stepDao.save(step);
+  }
+
+  public Step findStepById(String id) {
+    return stepDao.findById(id).orElseThrow(() -> new IllegalArgumentException("Step not found"));
   }
 }
