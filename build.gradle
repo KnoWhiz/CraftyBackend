@@ -45,6 +45,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.28'
     // batch
     implementation 'com.microsoft.azure:azure-batch:8.0.0'
+    // Spring Security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
 
 
 }

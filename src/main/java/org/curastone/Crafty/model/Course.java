@@ -14,7 +14,6 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Data
 @Builder(toBuilder = true)
-// @JsonDeserialize(builder = User.UserBuilder.class)
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "courses")

@@ -15,7 +15,6 @@ import java.util.Map;
 
 @Data
 @Builder(toBuilder = true)
-// @JsonDeserialize(builder = User.UserBuilder.class)
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "steps")
