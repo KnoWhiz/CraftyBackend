@@ -1,6 +1,5 @@
 package org.curastone.Crafty.controller;
 
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import org.curastone.Crafty.model.Step;
@@ -30,11 +29,9 @@ public class StepController {
     String jobId =
         "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
     String taskId = "taskId-" + jobId;
-    URL presignedUrl =
-        azureBlobService.generatePresignedUrl(step.getCourseId(), step.getStepType(), "output");
     try {
       azureBatchService.createBatchJob(jobId);
-      azureBatchService.submitTask(jobId, taskId, step, presignedUrl);
+      azureBatchService.submitTask(jobId, taskId, step);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }

@@ -4,7 +4,6 @@ import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.auth.BatchSharedKeyCredentials;
 import com.microsoft.azure.batch.protocol.models.*;
 import java.io.IOException;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,6 +22,8 @@ public class AzureBatchService {
   private final String containerImage;
   private final String containerRunOptions;
   private final String openaiApiKey;
+  private final String storageConnectionString;
+  private final String containerName;
 
   private final StepDao stepDao;
   private BatchClient batchClient;
@@ -35,6 +36,8 @@ public class AzureBatchService {
     this.containerImage = azureConfig.getContainerImage();
     this.containerRunOptions = azureConfig.getContainerRunOptions();
     this.openaiApiKey = azureConfig.getOpenaiApiKey();
+    this.storageConnectionString = azureConfig.getStorageConnectionString();
+    this.containerName = azureConfig.getContainerName();
     this.stepDao = stepDao;
     initializeBatchClient();
   }
@@ -75,12 +78,22 @@ public class AzureBatchService {
     }
   }
 
-  public void submitTask(String jobId, String taskId, Step step, URL presignedUrl) {
+  public void submitTask(String jobId, String taskId, Step step) {
     try {
+      // String commandLine = "echo 'Hello, Azure Batch!'";
       String commandLine =
-          "step " + step.getStepType() + " --topic '" + step.getParameters().get("topic") + "'";
+          "python cli.py step "
+              + step.getStepType()
+              + " --topic '"
+              + step.getParameters().get("topic")
+              + "'";
       List<EnvironmentSetting> environmentList =
-          Map.of("OPENAI_API_KEY", openaiApiKey).entrySet().stream()
+          Map.of(
+                  "OPENAI_API_KEY", openaiApiKey,
+                  "AZURE_STORAGE_CONNECTION_STRING", storageConnectionString,
+                  "AZURE_CONTAINER_NAME", containerName)
+              .entrySet()
+              .stream()
               .map(
                   entry ->
                       new EnvironmentSetting().withName(entry.getKey()).withValue(entry.getValue()))
@@ -90,7 +103,6 @@ public class AzureBatchService {
           new TaskContainerSettings()
               .withImageName(containerImage)
               .withContainerRunOptions(containerRunOptions);
-
 
       TaskAddParameter taskAddParameter =
           new TaskAddParameter()
