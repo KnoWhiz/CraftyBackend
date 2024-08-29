@@ -2,17 +2,13 @@ package org.curastone.Crafty.service;
 
 import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.auth.BatchSharedKeyCredentials;
-import com.microsoft.azure.batch.protocol.models.CloudJob;
-import com.microsoft.azure.batch.protocol.models.EnvironmentSetting;
-import com.microsoft.azure.batch.protocol.models.JobAddParameter;
-import com.microsoft.azure.batch.protocol.models.PoolInformation;
-import com.microsoft.azure.batch.protocol.models.TaskAddParameter;
-import com.microsoft.azure.batch.protocol.models.TaskContainerSettings;
+import com.microsoft.azure.batch.protocol.models.*;
 import java.io.IOException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.curastone.Crafty.config.AzureBatchConfig;
+import org.curastone.Crafty.config.AzureConfig;
 import org.curastone.Crafty.dao.StepDao;
 import org.curastone.Crafty.model.Step;
 import org.springframework.stereotype.Service;
@@ -31,14 +27,14 @@ public class AzureBatchService {
   private final StepDao stepDao;
   private BatchClient batchClient;
 
-  public AzureBatchService(AzureBatchConfig azureBatchConfig, StepDao stepDao) {
-    this.batchUrl = azureBatchConfig.getBatchUrl();
-    this.batchAccountName = azureBatchConfig.getBatchAccountName();
-    this.batchAccountKey = azureBatchConfig.getBatchAccountKey();
-    this.poolId = azureBatchConfig.getPoolId();
-    this.containerImage = azureBatchConfig.getContainerImage();
-    this.containerRunOptions = azureBatchConfig.getContainerRunOptions();
-    this.openaiApiKey = azureBatchConfig.getOpenaiApiKey();
+  public AzureBatchService(AzureConfig azureConfig, StepDao stepDao) {
+    this.batchUrl = azureConfig.getBatchUrl();
+    this.batchAccountName = azureConfig.getBatchAccountName();
+    this.batchAccountKey = azureConfig.getBatchAccountKey();
+    this.poolId = azureConfig.getPoolId();
+    this.containerImage = azureConfig.getContainerImage();
+    this.containerRunOptions = azureConfig.getContainerRunOptions();
+    this.openaiApiKey = azureConfig.getOpenaiApiKey();
     this.stepDao = stepDao;
     initializeBatchClient();
   }
@@ -79,8 +75,10 @@ public class AzureBatchService {
     }
   }
 
-  public void submitTask(String jobId, String taskId, String commandLine) {
+  public void submitTask(String jobId, String taskId, Step step, URL presignedUrl) {
     try {
+      String commandLine =
+          "step " + step.getStepType() + " --topic '" + step.getParameters().get("topic") + "'";
       List<EnvironmentSetting> environmentList =
           Map.of("OPENAI_API_KEY", openaiApiKey).entrySet().stream()
               .map(
@@ -92,6 +90,7 @@ public class AzureBatchService {
           new TaskContainerSettings()
               .withImageName(containerImage)
               .withContainerRunOptions(containerRunOptions);
+
 
       TaskAddParameter taskAddParameter =
           new TaskAddParameter()
