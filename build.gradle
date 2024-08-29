@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'org.springframework.boot' version '2.5.4'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'io.spring.dependency-management' version '1.1.0'
 }
 
 group = 'org.curastone.Crafty'
@@ -26,8 +26,6 @@ repositories {
 }
 
 dependencies {
-//    implementation 'org.springframework.boot:spring-boot-starter-web'
-//    implementation 'com.fasterxml.jackson.core:jackson-databind'
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     compileOnly 'org.projectlombok:lombok'
@@ -38,8 +36,6 @@ dependencies {
     // Springfox for Swagger documentation
     implementation 'io.springfox:springfox-boot-starter:3.0.0'
     implementation 'io.springfox:springfox-swagger-ui:3.0.0'
-    //
-    implementation 'org.springframework.boot:spring-boot-starter-security'
     // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.28'
     annotationProcessor 'org.projectlombok:lombok:1.18.28'
@@ -47,8 +43,24 @@ dependencies {
     implementation 'com.microsoft.azure:azure-batch:8.0.0'
     // Spring Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    // shell
+    implementation 'org.springframework.boot:spring-boot-starter'
+    implementation 'org.springframework.shell:spring-shell-starter:2.1.0'
 
 
+}
+
+bootJar {
+    archiveFileName = 'Mongo-0.0.1-SNAPSHOT.jar'
+    mainClassName = 'org.curastone.Crafty.Main'
+}
+
+jar {
+    enabled = false
+}
+
+tasks.withType(JavaExec) {
+    mainClass.set('org.curastone.Crafty.Main')
 }
 
 test {
