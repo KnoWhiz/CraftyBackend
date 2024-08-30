@@ -5,6 +5,7 @@ import java.util.Map;
 import org.curastone.Crafty.model.Step;
 import org.curastone.Crafty.service.AzureBatchService;
 import org.curastone.Crafty.service.AzureBlobService;
+import org.curastone.Crafty.service.StepService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,27 +23,30 @@ public class StepController {
   }
 
   @PostMapping
-  public Map<String, String> submitStep(@RequestBody Step step) {
+  public void submitStep(@RequestBody Step step) {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
     String jobId =
-        "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
+            "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
     String taskId = "taskId-" + jobId;
+    String commandLine = "";
     try {
+      commandLine = StepService.buildCmd(step);
       azureBatchService.createBatchJob(jobId);
-      azureBatchService.submitTask(jobId, taskId, step);
+      azureBatchService.submitTask(jobId, taskId, commandLine);
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
 
     step = step.toBuilder().jobId(jobId).build();
-    Step savedStep = azureBatchService.saveStep(step);
-    Map<String, String> response = new HashMap<>();
-    response.put("step_id", savedStep.getId().toString());
-    response.put("job_id", savedStep.getJobId());
-    response.put("task_id", taskId);
-    return response;
+    azureBatchService.saveStep(step);
+//    Map<String, String> response = new HashMap<>();
+//    response.put("cmdL", commandLine);
+//    response.put("step_id", savedStep.getId().toString());
+//    response.put("job_id", savedStep.getJobId());
+//    response.put("task_id", taskId);
+//    return response;
   }
 
   @GetMapping("/{id}")
