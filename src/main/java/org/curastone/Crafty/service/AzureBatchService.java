@@ -78,17 +78,9 @@ public class AzureBatchService {
     }
   }
 
-  public void submitTask(String jobId, String taskId, Step step) {
+  public void submitTask(String jobId, String taskId, String commandLine) {
     try {
 
-      String commandLine =
-          "python cli.py step "
-              + step.getStepType()
-              + " --topic '"
-              + step.getParameters().get("topic")
-              + "'";
-      //      String commandLine =
-      //          "python cli.py step section --course_id 7e240de74f --sections_per_chapter 20";
       List<EnvironmentSetting> environmentList =
           Map.of(
                   "OPENAI_API_KEY", openaiApiKey,
