@@ -1,5 +1,7 @@
 package org.curastone.Crafty.controller;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import org.curastone.Crafty.model.Step;
@@ -7,6 +9,8 @@ import org.curastone.Crafty.service.AzureBatchService;
 import org.curastone.Crafty.service.AzureBlobService;
 import org.curastone.Crafty.service.StepService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -28,7 +32,7 @@ public class StepController {
       throw new IllegalArgumentException("Missing required parameters");
     }
     String jobId =
-            "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
+        "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
@@ -41,12 +45,12 @@ public class StepController {
 
     step = step.toBuilder().jobId(jobId).build();
     azureBatchService.saveStep(step);
-//    Map<String, String> response = new HashMap<>();
-//    response.put("cmdL", commandLine);
-//    response.put("step_id", savedStep.getId().toString());
-//    response.put("job_id", savedStep.getJobId());
-//    response.put("task_id", taskId);
-//    return response;
+    //    Map<String, String> response = new HashMap<>();
+    //    response.put("cmdL", commandLine);
+    //    response.put("step_id", savedStep.getId().toString());
+    //    response.put("job_id", savedStep.getJobId());
+    //    response.put("task_id", taskId);
+    //    return response;
   }
 
   @GetMapping("/{id}")
@@ -63,5 +67,26 @@ public class StepController {
     response.put("step_status", step.getStepStatus());
 
     return response;
+  }
+
+  @GetMapping("/download/{courseId}")
+  public ResponseEntity<String> downloadFile(
+      @PathVariable String courseId, @RequestParam String downloadPath) {
+    try {
+      File outputDir = new File(downloadPath, "outputs");
+      if (!outputDir.exists()) {
+        if (!outputDir.mkdirs()) {
+          throw new IOException(
+              "Failed to create outputs directory: " + outputDir.getAbsolutePath());
+        }
+      }
+      azureBlobService.downloadFolder(courseId + "/", outputDir.getAbsolutePath());
+
+      return ResponseEntity.ok("Folder downloaded successfully using pre-signed URLs");
+
+    } catch (IOException e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body("Failed to download folder: " + e.getMessage());
+    }
   }
 }

@@ -1,14 +1,15 @@
 package org.curastone.Crafty.service;
 
+import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
-import com.azure.storage.blob.sas.BlobSasPermission;
-import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
-import com.azure.storage.common.sas.SasProtocol;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.time.OffsetDateTime;
-import org.bson.types.ObjectId;
+import com.azure.storage.blob.models.BlobItem;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 import org.curastone.Crafty.config.AzureConfig;
 import org.springframework.stereotype.Service;
 
@@ -26,54 +27,81 @@ public class AzureBlobService {
     this.containerName = azureConfig.getContainerName();
   }
 
-  public URL generatePresignedUrl(ObjectId courseId, String stepType, String filename) {
-    OffsetDateTime expiryTime = OffsetDateTime.now().plusDays(7);
-    ;
-    String blobName =
-        String.format("outputFile/%s/%s/%s", courseId.toHexString(), stepType, filename);
+  public List<BlobItem> listBlobsInFolder(String folderName) {
+    List<BlobItem> blobs = new ArrayList<>();
+    Deque<String> prefixesToCheck = new ArrayDeque<>();
+    prefixesToCheck.add(folderName);
 
-    // Set the SAS permissions including read, write, delete, and list
-    BlobSasPermission blobSasPermission =
-        new BlobSasPermission()
-            .setReadPermission(true)
-            .setWritePermission(true)
-            .setDeletePermission(true)
-            .setListPermission(true);
+    while (!prefixesToCheck.isEmpty()) {
+      String currentPrefix = prefixesToCheck.poll(); // Retrieves and removes the head of the queue
 
-    // Set the SAS values, including protocol, start time, and expiry time
-    BlobServiceSasSignatureValues values =
-        new BlobServiceSasSignatureValues(expiryTime, blobSasPermission)
-            .setStartTime(
-                OffsetDateTime.now()
-                    .minusMinutes(500)) // Optional: adjust start time to account for clock skew
-            .setProtocol(SasProtocol.HTTPS_ONLY); // Ensure only HTTPS is allowed
+      for (BlobItem blobItem :
+          blobServiceClient
+              .getBlobContainerClient(containerName)
+              .listBlobsByHierarchy(currentPrefix)) {
 
-    System.out.println("Generated Blob Name: " + blobName);
-    System.out.println("SAS Signature Values: " + values);
-
-    // Generate the SAS token
-    String sasToken =
-        blobServiceClient
-            .getBlobContainerClient(containerName)
-            .getBlobClient(blobName)
-            .generateSas(values);
-
-    System.out.println("Generated SAS Token: " + sasToken);
-
-    // Construct the full URL with the SAS token
-    String fullUrl =
-        String.format(
-            "https://%s.blob.core.windows.net/%s/%s?%s",
-            blobServiceClient.getAccountName(), containerName, blobName, sasToken);
-
-    System.out.println("Full URL: " + fullUrl);
-
-    try {
-      return new URL(fullUrl);
-    } catch (MalformedURLException e) {
-      System.err.println("Failed to generate pre-signed URL: " + fullUrl);
-      e.printStackTrace();
-      throw new RuntimeException("Failed to generate pre-signed URL: " + fullUrl, e);
+        if (blobItem.isPrefix()) {
+          prefixesToCheck.add(blobItem.getName());
+        } else {
+          blobs.add(blobItem);
+        }
+      }
     }
+
+    return blobs;
+  }
+
+  public void downloadFolder(String folderName, String localDirPath) throws IOException {
+    List<BlobItem> blobs = listBlobsInFolder(folderName);
+
+    if (blobs.isEmpty()) {
+      System.out.println("No blobs found in folder: " + folderName);
+      return;
+    }
+
+    File localDir = new File(localDirPath);
+    if (!localDir.exists()) {
+      if (!localDir.mkdirs()) {
+        throw new IOException("Failed to create local directory: " + localDir.getAbsolutePath());
+      }
+    }
+
+    for (BlobItem blobItem : blobs) {
+      String blobName = blobItem.getName();
+      if (!blobName.startsWith(folderName)) {
+        System.out.println("Skipping blob not in exact folder: " + blobName);
+        continue;
+      }
+      if (blobName.endsWith("/")) {
+        System.out.println("Skipping directory placeholder: " + blobName);
+        continue;
+      }
+
+      BlobClient blobClient =
+          blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
+
+      // Construct the local file path, preserving the directory structure
+      String relativePath = blobName.substring(folderName.length());
+      String localFilePath = localDirPath + File.separator + relativePath;
+      File localFile = new File(localFilePath);
+      
+      File parentDir = localFile.getParentFile();
+      if (!parentDir.exists()) {
+        if (!parentDir.mkdirs()) {
+          throw new IOException("Failed to create directories: " + parentDir.getAbsolutePath());
+        } else {
+          System.out.println("Created directory: " + parentDir.getAbsolutePath());
+        }
+      }
+
+      try {
+        blobClient.downloadToFile(localFilePath);
+        System.out.println("Downloaded: " + blobName + " to " + localFilePath);
+      } catch (Exception e) {
+        System.err.println("Failed to download blob: " + blobName + " - " + e.getMessage());
+      }
+    }
+
+    System.out.println("Download complete for folder: " + folderName);
   }
 }
