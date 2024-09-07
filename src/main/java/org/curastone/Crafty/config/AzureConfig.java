@@ -17,6 +17,7 @@ public class AzureConfig {
   private final String openaiApiKey;
   private final String storageConnectionString;
   private final String containerName;
+  private final String ffmpegPath;
 
   public AzureConfig(
       @Value("${azure.batch.url}") String batchUrl,
@@ -27,7 +28,8 @@ public class AzureConfig {
       @Value("${azure.batch.containerRunOptions}") String containerRunOptions,
       @Value("${azure.batch.openaiApiKey}") String openaiApiKey,
       @Value("${azure.storage.connection-string}") String storageConnectionString,
-      @Value("${azure.storage.container-name}") String containerName) {
+      @Value("${azure.storage.container-name}") String containerName,
+      @Value("${azure.ffmpeg.path}") String ffmpegPath) {
     this.batchUrl = batchUrl;
     this.batchAccountName = batchAccountName;
     this.batchAccountKey = batchAccountKey;
@@ -37,5 +39,6 @@ public class AzureConfig {
     this.openaiApiKey = openaiApiKey;
     this.storageConnectionString = storageConnectionString;
     this.containerName = containerName;
+    this.ffmpegPath = ffmpegPath;
   }
 }

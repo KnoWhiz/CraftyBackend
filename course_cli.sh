@@ -105,7 +105,7 @@ function create_step() {
             echo "Video step created with parameters: $PARAMS"
             echo "----------------------------------------------"
             echo "🟠Use the following command to check current step's status:"
-            echo "./course_cli.sh check-status --course-id \"$COURSE_ID\" --step voice"
+            echo "./course_cli.sh check-status --course-id \"$COURSE_ID\" --step video"
             echo "----------------------------------------------"
             echo "⏬ Use the following command to download video and preview:"
             echo "./course_cli.sh download-files --course-id \"$COURSE_ID\" --downloadPath \"Outputs\" "

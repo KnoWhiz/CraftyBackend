@@ -31,8 +31,7 @@ public class StepController {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
-    String jobId =
-        "jobId-" + step.getCourseId() + "-" + step.getStepType();
+    String jobId = "jobId-" + step.getCourseId() + "-" + step.getStepType();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
@@ -42,30 +41,24 @@ public class StepController {
 
       step = step.toBuilder().jobId(jobId).build();
       azureBatchService.saveStep(step);
-//      Step savedStep = azureBatchService.saveStep(step);
-//      Map<String, String> response = new HashMap<>();
-//      response.put("cmdL", commandLine);
-//      response.put("step_id", savedStep.getId().toString());
-//      response.put("job_id", savedStep.getJobId());
-//      response.put("task_id", taskId);
-//      return response;
-
+      //      Step savedStep = azureBatchService.saveStep(step);
+      //      Map<String, String> response = new HashMap<>();
+      //      response.put("cmdL", commandLine);
+      //      response.put("step_id", savedStep.getId().toString());
+      //      response.put("job_id", savedStep.getJobId());
+      //      response.put("task_id", taskId);
+      //      return response;
 
       // Return the task status
-     // return "Task Status: " ;
+      // return "Task Status: " ;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
-
-
-
-
-
-
   }
 
   @GetMapping("/status/{courseId}")
-  public ResponseEntity<Map<String, Object>> getStepStatus(@PathVariable String courseId, @RequestParam String stepName) {
+  public ResponseEntity<Map<String, Object>> getStepStatus(
+      @PathVariable String courseId, @RequestParam String stepName) {
     System.out.println("Received request for courseId: " + courseId + ", stepName: " + stepName);
     String jobId = "jobId-" + courseId + "-" + stepName;
     Map<String, Object> response = new HashMap<>();
@@ -79,9 +72,7 @@ public class StepController {
       response.put("message", e.getMessage());
       return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
   }
-
 
   @GetMapping("/download/{courseId}")
   public ResponseEntity<String> downloadFile(
