@@ -32,42 +32,56 @@ public class StepController {
       throw new IllegalArgumentException("Missing required parameters");
     }
     String jobId =
-        "jobId-" + step.getCourseId() + "-" + step.getStepType() + "-" + System.currentTimeMillis();
+        "jobId-" + step.getCourseId() + "-" + step.getStepType();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
       commandLine = StepService.buildCmd(step);
       azureBatchService.createBatchJob(jobId);
       azureBatchService.submitTask(jobId, taskId, commandLine);
+
+      step = step.toBuilder().jobId(jobId).build();
+      azureBatchService.saveStep(step);
+//      Step savedStep = azureBatchService.saveStep(step);
+//      Map<String, String> response = new HashMap<>();
+//      response.put("cmdL", commandLine);
+//      response.put("step_id", savedStep.getId().toString());
+//      response.put("job_id", savedStep.getJobId());
+//      response.put("task_id", taskId);
+//      return response;
+
+
+      // Return the task status
+     // return "Task Status: " ;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
 
-    step = step.toBuilder().jobId(jobId).build();
-    azureBatchService.saveStep(step);
-    //    Map<String, String> response = new HashMap<>();
-    //    response.put("cmdL", commandLine);
-    //    response.put("step_id", savedStep.getId().toString());
-    //    response.put("job_id", savedStep.getJobId());
-    //    response.put("task_id", taskId);
-    //    return response;
+
+
+
+
+
   }
 
-  @GetMapping("/{id}")
-  public Map<String, Object> getStepStatus(@PathVariable String id) { // input is stepId, not jobId
-    Step step = azureBatchService.findStepById(id);
-    // Fetch job status from Azure Batch
-    String batchJobStatus = azureBatchService.getJobStatus(step.getJobId());
-    // String batchJobStatus = "TRUE";
-    step.setStepStatus(batchJobStatus);
-    // TODO: get result from batch (do we still need that?)
-    step.setResult("");
-    azureBatchService.saveStep(step);
+  @GetMapping("/status/{courseId}")
+  public ResponseEntity<Map<String, Object>> getStepStatus(@PathVariable String courseId, @RequestParam String stepName) {
+    System.out.println("Received request for courseId: " + courseId + ", stepName: " + stepName);
+    String jobId = "jobId-" + courseId + "-" + stepName;
     Map<String, Object> response = new HashMap<>();
-    response.put("step_status", step.getStepStatus());
+    try {
+      Map<String, Object> taskStatus = azureBatchService.getTaskStatus(jobId);
+      // response.put("jobId", jobId);
+      response.put("taskStatus", taskStatus);
+      return new ResponseEntity<>(response, HttpStatus.OK);
+    } catch (Exception e) {
+      response.put("status", "error");
+      response.put("message", e.getMessage());
+      return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 
-    return response;
   }
+
 
   @GetMapping("/download/{courseId}")
   public ResponseEntity<String> downloadFile(

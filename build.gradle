@@ -40,13 +40,16 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.28'
     annotationProcessor 'org.projectlombok:lombok:1.18.28'
     // batch
-    implementation 'com.microsoft.azure:azure-batch:8.0.0'
+    implementation 'com.microsoft.azure:azure-batch:9.0.0'
     implementation 'com.azure:azure-storage-blob:12.26.1'
     // Spring Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
     // shell
     implementation 'org.springframework.boot:spring-boot-starter'
     implementation 'org.springframework.shell:spring-shell-starter:2.1.0'
+    //
+
+
 
 
 }

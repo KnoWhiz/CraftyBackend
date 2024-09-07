@@ -28,7 +28,7 @@ public class Step {
   private ObjectId courseId;
 
   @JsonProperty("stepType")
-  private String stepType; // CHAPTER, SECTION, NOTE, SLIDE, SCRIPT, VOICE_OVER, VIDEO
+  private String stepType; // CHAPTER, SECTION, NOTE, SLIDE, SCRIPT, VOICE, VIDEO
 
   @JsonProperty("stepStatus")
   private String stepStatus; // IN QUEUE, IN PROGRESS, SUCCEED, FAILED
@@ -41,4 +41,7 @@ public class Step {
 
   @JsonProperty("jobId")
   private String jobId;
+
+  @JsonProperty("taskId")
+  private String taskId;
 }

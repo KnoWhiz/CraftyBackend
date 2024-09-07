@@ -4,13 +4,26 @@ import com.microsoft.azure.batch.BatchClient;
 import com.microsoft.azure.batch.auth.BatchSharedKeyCredentials;
 import com.microsoft.azure.batch.protocol.models.*;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 import org.curastone.Crafty.config.AzureConfig;
 import org.curastone.Crafty.dao.StepDao;
 import org.curastone.Crafty.model.Step;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+//
+import com.microsoft.azure.batch.BatchClientBehavior;
+import com.microsoft.azure.batch.protocol.models.CloudTask;
+import com.microsoft.azure.batch.protocol.models.TaskState;
+import org.springframework.beans.factory.annotation.Value;
+import com.microsoft.azure.batch.protocol.models.TaskExecutionInformation;
+import com.microsoft.azure.batch.protocol.models.TaskFailureInformation;
+import com.microsoft.azure.batch.protocol.models.BatchError;
+
 
 @Service
 public class AzureBatchService {
@@ -28,6 +41,11 @@ public class AzureBatchService {
   private final StepDao stepDao;
   private BatchClient batchClient;
 
+//  public AzureBatchTaskStatusChecker(BatchClient batchClient) {
+//    this.batchClient = batchClient;
+//  }
+
+
   public AzureBatchService(AzureConfig azureConfig, StepDao stepDao) {
     this.batchUrl = azureConfig.getBatchUrl();
     this.batchAccountName = azureConfig.getBatchAccountName();
@@ -39,24 +57,67 @@ public class AzureBatchService {
     this.storageConnectionString = azureConfig.getStorageConnectionString();
     this.containerName = azureConfig.getContainerName();
     this.stepDao = stepDao;
+    //
+    // Initialize the BatchClient using shared key credentials
+    BatchSharedKeyCredentials credentials = new BatchSharedKeyCredentials(batchUrl, batchAccountName, batchAccountKey);
+    //this.batchClient = BatchClient.open(credentials);
+      //
     initializeBatchClient();
   }
+
+
+  public Map<String, Object> getTaskStatus(String jobId) throws Exception {
+    List<CloudTask> tasks = batchClient.taskOperations().listTasks(jobId);
+    List<Map<String, Object>> taskStatusList = new ArrayList<>();
+
+    for (CloudTask task : tasks) {
+      TaskState taskState = task.state();
+      TaskExecutionInformation execInfo = task.executionInfo();
+      Map<String, Object> taskStatus = new HashMap<>();
+      taskStatus.put("taskId", task.id());
+      taskStatus.put("state", taskState.toString());
+
+      if (taskState == TaskState.COMPLETED) {
+        if (execInfo.exitCode() != 0) {
+          // Task failed
+          TaskFailureInformation failureInfo = execInfo.failureInfo();
+          taskStatus.put("status", "failed");
+          taskStatus.put("error", failureInfo.message());
+          sendErrorToBackend(task.id(), failureInfo.message());     // send to java backend
+        } else {
+          taskStatus.put("status", "completed");
+          taskStatus.put("message", "Task completed successfully.");
+        }
+
+      }
+      taskStatusList.add(taskStatus);
+    }
+      Map<String, Object> response = new HashMap<>();
+      response.put("tasks", taskStatusList);
+      return response;
+
+  }
+  private void sendErrorToBackend(String taskId, String errorMessage) {
+    System.out.println("Sending error for task " + taskId + ": " + errorMessage);
+  }
+
+
 
   private void initializeBatchClient() {
     if (batchUrl == null || batchAccountName == null || batchAccountKey == null) {
       throw new IllegalStateException("Azure Batch configuration properties are not set");
     }
     BatchSharedKeyCredentials credentials =
-        new BatchSharedKeyCredentials(batchUrl, batchAccountName, batchAccountKey);
+            new BatchSharedKeyCredentials(batchUrl, batchAccountName, batchAccountKey);
     batchClient = BatchClient.open(credentials);
   }
 
   public void createBatchJob(String jobId) {
     try {
       JobAddParameter jobAddParameter =
-          new JobAddParameter()
-              .withId(jobId)
-              .withPoolInfo(new PoolInformation().withPoolId(poolId));
+              new JobAddParameter()
+                      .withId(jobId)
+                      .withPoolInfo(new PoolInformation().withPoolId(poolId));
 
       batchClient.jobOperations().createJob(jobAddParameter);
 
@@ -82,28 +143,28 @@ public class AzureBatchService {
     try {
 
       List<EnvironmentSetting> environmentList =
-          Map.of(
-                  "OPENAI_API_KEY", openaiApiKey,
-                  "AZURE_STORAGE_CONNECTION_STRING", storageConnectionString,
-                  "AZURE_CONTAINER_NAME", containerName)
-              .entrySet()
-              .stream()
-              .map(
-                  entry ->
-                      new EnvironmentSetting().withName(entry.getKey()).withValue(entry.getValue()))
-              .collect(Collectors.toList());
+              Map.of(
+                              "OPENAI_API_KEY", openaiApiKey,
+                              "AZURE_STORAGE_CONNECTION_STRING", storageConnectionString,
+                              "AZURE_CONTAINER_NAME", containerName)
+                      .entrySet()
+                      .stream()
+                      .map(
+                              entry ->
+                                      new EnvironmentSetting().withName(entry.getKey()).withValue(entry.getValue()))
+                      .collect(Collectors.toList());
 
       TaskContainerSettings containerSettings =
-          new TaskContainerSettings()
-              .withImageName(containerImage)
-              .withContainerRunOptions(containerRunOptions);
+              new TaskContainerSettings()
+                      .withImageName(containerImage)
+                      .withContainerRunOptions(containerRunOptions);
 
       TaskAddParameter taskAddParameter =
-          new TaskAddParameter()
-              .withId(taskId)
-              .withCommandLine(commandLine)
-              .withContainerSettings(containerSettings)
-              .withEnvironmentSettings(environmentList);
+              new TaskAddParameter()
+                      .withId(taskId)
+                      .withCommandLine(commandLine)
+                      .withContainerSettings(containerSettings)
+                      .withEnvironmentSettings(environmentList);
 
       batchClient.taskOperations().createTask(jobId, taskAddParameter);
     } catch (IOException e) {
