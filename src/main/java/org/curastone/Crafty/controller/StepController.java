@@ -94,4 +94,19 @@ public class StepController {
           .body("Failed to download folder: " + e.getMessage());
     }
   }
+
+  @PutMapping("/upload/{courseId}")
+  public ResponseEntity<String> uploadFile(
+      @PathVariable String courseId, @RequestParam String uploadPath) {
+    try {
+      azureBlobService.uploadFolder(uploadPath + "/outputs", courseId);
+
+      return ResponseEntity.ok(
+          "Folder uploaded successfully to Azure Blob Storage under: " + courseId + "/outputs");
+
+    } catch (IOException e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body("Failed to upload folder: " + e.getMessage());
+    }
+  }
 }

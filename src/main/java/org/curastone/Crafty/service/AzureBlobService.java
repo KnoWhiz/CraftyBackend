@@ -1,11 +1,13 @@
 package org.curastone.Crafty.service;
 
 import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -84,7 +86,7 @@ public class AzureBlobService {
       String relativePath = blobName.substring(folderName.length());
       String localFilePath = localDirPath + File.separator + relativePath;
       File localFile = new File(localFilePath);
-      
+
       File parentDir = localFile.getParentFile();
       if (!parentDir.exists()) {
         if (!parentDir.mkdirs()) {
@@ -103,5 +105,38 @@ public class AzureBlobService {
     }
 
     System.out.println("Download complete for folder: " + folderName);
+  }
+
+  public void uploadFolder(String localDirPath, String courseId) throws IOException {
+    File localDir = new File(localDirPath);
+    if (!localDir.exists() || !localDir.isDirectory()) {
+      throw new IOException("Local directory does not exist: " + localDirPath);
+    }
+
+    BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+    final String targetFolder = courseId;
+
+    try {
+      Files.walk(localDir.toPath())
+          .filter(Files::isRegularFile)
+          .forEach(
+              path -> {
+                File file = path.toFile();
+                String relativePath = localDir.toPath().relativize(path).toString();
+                BlobClient blobClient =
+                    containerClient.getBlobClient(targetFolder + "/" + relativePath);
+                blobClient.uploadFromFile(file.getAbsolutePath(), true);
+                System.out.println(
+                    "Uploaded: "
+                        + file.getAbsolutePath()
+                        + " to "
+                        + targetFolder
+                        + "/"
+                        + relativePath);
+              });
+    } catch (RuntimeException e) {
+      throw new IOException(e.getCause());
+    }
+    System.out.println("Upload complete for folder: " + targetFolder);
   }
 }
