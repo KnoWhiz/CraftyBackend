@@ -1,17 +1,19 @@
 package org.curastone.Crafty.service;
 
 import com.azure.storage.blob.BlobClient;
-import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.curastone.Crafty.config.AzureConfig;
 import org.springframework.stereotype.Service;
 
@@ -53,7 +55,7 @@ public class AzureBlobService {
     return blobs;
   }
 
-  public void downloadFolder(String folderName, String localDirPath) throws IOException {
+  public void zipFilesToResponse(HttpServletResponse response, String folderName) throws IOException {
     List<BlobItem> blobs = listBlobsInFolder(folderName);
 
     if (blobs.isEmpty()) {
@@ -61,52 +63,41 @@ public class AzureBlobService {
       return;
     }
 
-    File localDir = new File(localDirPath);
-    if (!localDir.exists()) {
-      if (!localDir.mkdirs()) {
-        throw new IOException("Failed to create local directory: " + localDir.getAbsolutePath());
-      }
-    }
+    try (ZipOutputStream zipOutputStream = new ZipOutputStream(response.getOutputStream())) {
+      for (BlobItem blobItem : blobs) {
+        String blobName = blobItem.getName();
 
-    for (BlobItem blobItem : blobs) {
-      String blobName = blobItem.getName();
-      if (!blobName.startsWith(folderName)) {
-        System.out.println("Skipping blob not in exact folder: " + blobName);
-        continue;
-      }
-      if (blobName.endsWith("/")) {
-        System.out.println("Skipping directory placeholder: " + blobName);
-        continue;
-      }
-
-      BlobClient blobClient =
-          blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
-
-      // Construct the local file path, preserving the directory structure
-      String relativePath = blobName.substring(folderName.length());
-      String localFilePath = localDirPath + File.separator + relativePath;
-      File localFile = new File(localFilePath);
-
-      File parentDir = localFile.getParentFile();
-      if (!parentDir.exists()) {
-        if (!parentDir.mkdirs()) {
-          throw new IOException("Failed to create directories: " + parentDir.getAbsolutePath());
-        } else {
-          System.out.println("Created directory: " + parentDir.getAbsolutePath());
+        if (!blobName.startsWith(folderName)) {
+          System.out.println("Skipping blob not in exact folder: " + blobName);
+          continue;
         }
+        if (blobName.endsWith("/")) {
+          System.out.println("Skipping directory placeholder: " + blobName);
+          continue;
+        }
+
+        BlobClient blobClient = blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
+        String relativePath = blobName.substring(folderName.length());
+        ZipEntry zipEntry = new ZipEntry(relativePath);
+        zipOutputStream.putNextEntry(zipEntry);
+        try (InputStream blobInputStream = blobClient.openInputStream()) {
+          IOUtils.copy(blobInputStream, zipOutputStream);
+          System.out.println("Zipped: " + blobName + " as " + relativePath);
+        } catch (Exception e) {
+          System.err.println("Failed to zip blob: " + blobName + " - " + e.getMessage());
+        }
+
+        zipOutputStream.closeEntry();
       }
 
-      try {
-        blobClient.downloadToFile(localFilePath);
-        System.out.println("Downloaded: " + blobName + " to " + localFilePath);
-      } catch (Exception e) {
-        System.err.println("Failed to download blob: " + blobName + " - " + e.getMessage());
-      }
+      zipOutputStream.finish();
+      System.out.println("Zipping complete for folder: " + folderName);
+    } catch (IOException e) {
+      throw new IOException("Failed to stream files: " + e.getMessage(), e);
     }
-
-    System.out.println("Download complete for folder: " + folderName);
   }
 
+/*
   public void uploadFolder(String localDirPath, String courseId) throws IOException {
     File localDir = new File(localDirPath);
     if (!localDir.exists() || !localDir.isDirectory()) {
@@ -139,4 +130,5 @@ public class AzureBlobService {
     }
     System.out.println("Upload complete for folder: " + targetFolder);
   }
+ */
 }

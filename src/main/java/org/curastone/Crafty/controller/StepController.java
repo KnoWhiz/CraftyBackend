@@ -1,9 +1,9 @@
 package org.curastone.Crafty.controller;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import javax.servlet.http.HttpServletResponse;
 import org.curastone.Crafty.model.Step;
 import org.curastone.Crafty.service.AzureBatchService;
 import org.curastone.Crafty.service.AzureBlobService;
@@ -41,16 +41,6 @@ public class StepController {
 
       step = step.toBuilder().jobId(jobId).build();
       azureBatchService.saveStep(step);
-      //      Step savedStep = azureBatchService.saveStep(step);
-      //      Map<String, String> response = new HashMap<>();
-      //      response.put("cmdL", commandLine);
-      //      response.put("step_id", savedStep.getId().toString());
-      //      response.put("job_id", savedStep.getJobId());
-      //      response.put("task_id", taskId);
-      //      return response;
-
-      // Return the task status
-      // return "Task Status: " ;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
@@ -76,37 +66,34 @@ public class StepController {
 
   @GetMapping("/download/{courseId}")
   public ResponseEntity<String> downloadFile(
-      @PathVariable String courseId, @RequestParam String downloadPath) {
+          @PathVariable String courseId, HttpServletResponse response) {
     try {
-      File outputDir = new File(downloadPath, "outputs");
-      if (!outputDir.exists()) {
-        if (!outputDir.mkdirs()) {
-          throw new IOException(
-              "Failed to create outputs directory: " + outputDir.getAbsolutePath());
-        }
-      }
-      azureBlobService.downloadFolder(courseId + "/", outputDir.getAbsolutePath());
+      String folderName = courseId + "/";
+      response.setContentType("application/octet-stream");
+      response.setHeader("Content-Disposition", "attachment; filename=" + courseId + ".zip");
 
-      return ResponseEntity.ok("Folder downloaded successfully using pre-signed URLs");
+      azureBlobService.zipFilesToResponse(response, folderName);
+      return null;
 
     } catch (IOException e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body("Failed to download folder: " + e.getMessage());
+              .body("Failed to download folder: " + e.getMessage());
     }
   }
+  /*
+   @PutMapping("/upload/{courseId}")
+   public ResponseEntity<String> uploadFile(
+       @PathVariable String courseId, @RequestParam String uploadPath) {
+     try {
+       azureBlobService.uploadFolder(uploadPath + "/outputs", courseId);
 
-  @PutMapping("/upload/{courseId}")
-  public ResponseEntity<String> uploadFile(
-      @PathVariable String courseId, @RequestParam String uploadPath) {
-    try {
-      azureBlobService.uploadFolder(uploadPath + "/outputs", courseId);
+       return ResponseEntity.ok(
+           "Folder uploaded successfully to Azure Blob Storage under: " + courseId + "/outputs");
 
-      return ResponseEntity.ok(
-          "Folder uploaded successfully to Azure Blob Storage under: " + courseId + "/outputs");
-
-    } catch (IOException e) {
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body("Failed to upload folder: " + e.getMessage());
-    }
-  }
+     } catch (IOException e) {
+       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+           .body("Failed to upload folder: " + e.getMessage());
+     }
+   }
+  */
 }
