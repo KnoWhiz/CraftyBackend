@@ -35,30 +35,17 @@ public class StepController {
 
 
   @PostMapping
-  public ResponseEntity<String> submitStep(@RequestBody Step step) {
+  public void submitStep(@RequestBody Step step) {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
-    Course course = CourseService.getCourse(step.getCourseId());
-
-    if (course == null) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND)
-              .body("Course not found");
-    }
-
-    String openAiApiKey = course.getApiKey();
-    if (openAiApiKey == null) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-              .body("API key not set for this course");
-    }
-
     String jobId = "jobId-" + step.getCourseId() + "-" + step.getStepType();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
       commandLine = StepService.buildCmd(step);
       azureBatchService.createBatchJob(jobId);
-      azureBatchService.submitTask(jobId, taskId, commandLine, openAiApiKey);
+      azureBatchService.submitTask(jobId, taskId, commandLine);
 
       step = step.toBuilder().jobId(jobId).build();
       azureBatchService.saveStep(step);
@@ -74,9 +61,7 @@ public class StepController {
       // return "Task Status: " ;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
-    }
-    return null;
-  }
+    }}
 
   @GetMapping("/status/{courseId}")
   public ResponseEntity<Map<String, Object>> getStepStatus(

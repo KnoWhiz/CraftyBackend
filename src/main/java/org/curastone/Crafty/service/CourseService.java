@@ -24,9 +24,6 @@ public class CourseService {
     steps.put("voice_over", null);
     steps.put("video", null);
     course.setSteps(steps);
-    if (course.getApiKey() == null || course.getApiKey().isEmpty()) {
-      throw new IllegalArgumentException("OpenAI API key is required");
-    }
 
     return courseDao.save(course);
   }

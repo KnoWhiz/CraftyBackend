@@ -1,22 +1,16 @@
 #!/bin/bash
 
 # shellcheck disable=SC1078
-#BASE_URL="http://20.150.196.209:8081"
-BASE_URL="http://localhost:8081"
+BASE_URL="http://20.150.196.209:8081"
+#BASE_URL="http://localhost:8081"
 
 # shellcheck disable=SC2120
 function create_course() {
-  OPENAI_API_KEY=$1
-  TOPIC=$2
-  TYPE=$3
-  echo $OPENAI_API_KEY
-  echo $TOPIC
-  echo $TYPE
     echo "Creating course..."
 
     RESPONSE=$(curl -s -X POST "$BASE_URL/course" \
-             -H "Content-Type: application/json" \
-             -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\", \"openAiToken\": \"$OPENAI_API_KEY\"}")
+        -H "Content-Type: application/json" \
+        -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\"}")
     # get CourseId
     COURSE_ID=$(echo "$RESPONSE" | jq -r '.course_id')
 
@@ -170,10 +164,9 @@ function upload_file() {
 }
 
 if [ "$1" == "create-course" ]; then
-    OPENAI_API_KEY=$2
-    TOPIC=$4
-    TYPE=$6
-    create_course "$OPENAI_API_KEY" "$TOPIC" "$TYPE"
+    TOPIC=$3
+    TYPE=$5
+    create_course
 elif [ "$1" == "create-step" ]; then
     STEP_NAME=$5
     COURSE_ID=$3
