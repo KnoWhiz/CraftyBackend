@@ -124,18 +124,43 @@ function create_step() {
     echo
 }
 
+#function download_file() {
+#    COURSE_ID=$1
+#    DOWNLOAD_PATH=$2
+#    echo "Course ID: $COURSE_ID"
+#    echo "Download Path: $DOWNLOAD_PATH"
+#    echo "Downloading files for course ID: $COURSE_ID to $DOWNLOAD_PATH..."
+#    ENCODED_DOWNLOAD_PATH=$(printf '%s' "$DOWNLOAD_PATH" | jq -sRr @uri)
+#    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID?downloadPath=$ENCODED_DOWNLOAD_PATH" \
+#    -H "Content-Type: application/json")
+#    echo "Download response: $RESPONSE"
+#    echo
+#    }
 function download_file() {
-    COURSE_ID=$1
-    DOWNLOAD_PATH=$2
-    echo "Course ID: $COURSE_ID"
-    echo "Download Path: $DOWNLOAD_PATH"
-    echo "Downloading files for course ID: $COURSE_ID to $DOWNLOAD_PATH..."
-    ENCODED_DOWNLOAD_PATH=$(printf '%s' "$DOWNLOAD_PATH" | jq -sRr @uri)
-    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID?downloadPath=$ENCODED_DOWNLOAD_PATH" \
-    -H "Content-Type: application/json")
-    echo "Download response: $RESPONSE"
-    echo
-    }
+    local COURSE_ID=$1
+    local DOWNLOAD_PATH=$2
+
+    if [ -z "$COURSE_ID" ] || [ -z "$DOWNLOAD_PATH" ]; then
+        echo "Usage: download_course <course_id> <downloadPath>"
+        return 1
+    fi
+
+    echo "Downloading files for course ID: $COURSE_ID..."
+
+    # Create output directory if it doesn't exist
+    mkdir -p "$DOWNLOAD_PATH"
+
+    # Send the request and handle the response
+    RESPONSE=$(curl -s -X GET "$BASE_URL/download/$COURSE_ID" -o "$DOWNLOAD_PATH/$COURSE_ID.zip")
+
+    # Check if the file was downloaded successfully
+    if [ -f "$DOWNLOAD_PATH/$COURSE_ID.zip" ]; then
+        echo "Download completed successfully. File saved to $DOWNLOAD_PATH/$COURSE_ID.zip"
+    else
+        echo "Failed to download course files."
+        echo "Response: $RESPONSE"
+    fi
+}
 
 function check_status() {
     COURSE_ID=$1
