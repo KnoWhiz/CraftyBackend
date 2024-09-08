@@ -132,13 +132,12 @@ public class AzureBatchService {
     }
   }
 
-  public void submitTask(String jobId, String taskId, String commandLine) {
+  public void submitTask(String jobId, String taskId, String commandLine, String apiKey) {
     try {
-
       List<EnvironmentSetting> environmentList =
           Map.of(
                   "OPENAI_API_KEY",
-                  openaiApiKey,
+                          apiKey,
                   "AZURE_STORAGE_CONNECTION_STRING",
                   storageConnectionString,
                   "AZURE_CONTAINER_NAME",

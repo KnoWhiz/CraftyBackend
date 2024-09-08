@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class CourseService {
 
-  private final CourseDao courseDao;
+  private static CourseDao courseDao = null;
 
   public CourseService(CourseDao courseDao) {
-    this.courseDao = courseDao;
+    CourseService.courseDao = courseDao;
   }
 
   public Course createCourse(Course course) {
@@ -24,11 +24,14 @@ public class CourseService {
     steps.put("voice_over", null);
     steps.put("video", null);
     course.setSteps(steps);
+    if (course.getApiKey() == null || course.getApiKey().isEmpty()) {
+      throw new IllegalArgumentException("OpenAI API key is required");
+    }
 
     return courseDao.save(course);
   }
 
-  public Course getCourse(ObjectId courseId) {
+  public static Course getCourse(ObjectId courseId) {
     return courseDao.findById(courseId).orElseThrow(() -> new RuntimeException("Course not found"));
   }
 }

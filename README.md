@@ -8,8 +8,6 @@ gradle build
 ```
 #### 2. Run the Backend Service
 
-  Start the backend service using Gradle:
-
 ```
 gradle bootRun
 ```

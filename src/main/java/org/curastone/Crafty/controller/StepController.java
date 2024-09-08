@@ -4,9 +4,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.curastone.Crafty.dao.CourseDao;
+import org.curastone.Crafty.model.Course;
 import org.curastone.Crafty.model.Step;
 import org.curastone.Crafty.service.AzureBatchService;
 import org.curastone.Crafty.service.AzureBlobService;
+import org.curastone.Crafty.service.CourseService;
 import org.curastone.Crafty.service.StepService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,25 +23,41 @@ public class StepController {
 
   private final AzureBatchService azureBatchService;
   private final AzureBlobService azureBlobService;
+  private final CourseDao courseDao;
 
   @Autowired
-  public StepController(AzureBatchService azureBatchService, AzureBlobService azureBlobService) {
+  public StepController(AzureBatchService azureBatchService, AzureBlobService azureBlobService, CourseDao courseDao) {
     this.azureBatchService = azureBatchService;
     this.azureBlobService = azureBlobService;
+    this.courseDao = courseDao;
   }
 
+
   @PostMapping
-  public void submitStep(@RequestBody Step step) {
+  public ResponseEntity<String> submitStep(@RequestBody Step step) {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
+    Course course = CourseService.getCourse(step.getCourseId());
+
+    if (course == null) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+              .body("Course not found");
+    }
+
+    String openAiApiKey = course.getApiKey();
+    if (openAiApiKey == null) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+              .body("API key not set for this course");
+    }
+
     String jobId = "jobId-" + step.getCourseId() + "-" + step.getStepType();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
       commandLine = StepService.buildCmd(step);
       azureBatchService.createBatchJob(jobId);
-      azureBatchService.submitTask(jobId, taskId, commandLine);
+      azureBatchService.submitTask(jobId, taskId, commandLine, openAiApiKey);
 
       step = step.toBuilder().jobId(jobId).build();
       azureBatchService.saveStep(step);
@@ -54,6 +74,7 @@ public class StepController {
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
     }
+    return null;
   }
 
   @GetMapping("/status/{courseId}")
