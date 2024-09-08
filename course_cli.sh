@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# shellcheck disable=SC1078
+#BASE_URL="http://20.150.196.209:8081"
 BASE_URL="http://localhost:8081"
 
 function create_course() {
@@ -142,8 +144,22 @@ function check_status() {
     RESPONSE=$(curl -s -X GET "$BASE_URL/step/status/$COURSE_ID?stepName=$STEP_NAME")
     echo "Status response:"
         echo "$RESPONSE" | jq .
+}
 
+function upload_file() {
+  COURSE_ID=$1
+      UPLOAD_PATH=$2
+      echo "Uploading files for course ID: $COURSE_ID from path: $UPLOAD_PATH..."
 
+      # Ensure UPLOAD_PATH does not include trailing slashes
+      UPLOAD_PATH=$(echo "$UPLOAD_PATH" | sed 's:/*$::')
+
+      RESPONSE=$(curl -s -X PUT "$BASE_URL/step/upload/$COURSE_ID?uploadPath=$UPLOAD_PATH" \
+      -H "Content-Type: application/json" \
+      --data-urlencode "uploadPath=$UPLOAD_PATH")
+
+      echo "Upload response: $RESPONSE"
+      echo
 }
 
 if [ "$1" == "create-course" ]; then
@@ -163,6 +179,11 @@ elif [ "$1" == "check-status" ]; then
     COURSE_ID=$3
     STEP_NAME=$5
     check_status "$COURSE_ID" "$STEP_NAME"
+
+elif [ "$1" == "upload-files" ]; then
+    COURSE_ID=$3
+    UPLOAD_PATH=$5
+    upload_file "$COURSE_ID" "$UPLOAD_PATH"
 else
     echo "Invalid command. Usage: ./course_cli.sh [create-course | create-step]"
 fi
