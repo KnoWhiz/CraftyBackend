@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/step")
@@ -83,7 +84,7 @@ public class StepController {
 
   @GetMapping("/download/{courseId}")
   public ResponseEntity<String> downloadFile(
-          @PathVariable String courseId, HttpServletResponse response) {
+      @PathVariable String courseId, HttpServletResponse response) {
     try {
       String folderName = courseId + "/";
       response.setContentType("application/octet-stream");
@@ -94,23 +95,24 @@ public class StepController {
 
     } catch (IOException e) {
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-              .body("Failed to download folder: " + e.getMessage());
+          .body("Failed to download folder: " + e.getMessage());
     }
   }
-  /*
-   @PutMapping("/upload/{courseId}")
-   public ResponseEntity<String> uploadFile(
-       @PathVariable String courseId, @RequestParam String uploadPath) {
-     try {
-       azureBlobService.uploadFolder(uploadPath + "/outputs", courseId);
 
-       return ResponseEntity.ok(
-           "Folder uploaded successfully to Azure Blob Storage under: " + courseId + "/outputs");
+  @PutMapping("/{courseId}/upload")
+  public ResponseEntity<String> uploadFile(
+      @PathVariable String courseId, @RequestParam("file") MultipartFile zipFile) {
 
-     } catch (IOException e) {
-       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-           .body("Failed to upload folder: " + e.getMessage());
-     }
-   }
-  */
+    try {
+      azureBlobService.unzipAndUploadToBlob(zipFile, courseId);
+
+      return ResponseEntity.ok(
+          "Zip file uploaded and contents extracted successfully to Azure Blob Storage under: "
+              + courseId);
+
+    } catch (IOException e) {
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body("Failed to upload and extract zip file: " + e.getMessage());
+    }
+  }
 }

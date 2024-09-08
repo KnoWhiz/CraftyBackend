@@ -1,9 +1,12 @@
 package org.curastone.Crafty.service;
 
 import com.azure.storage.blob.BlobClient;
+import com.azure.storage.blob.BlobContainerClient;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobItem;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayDeque;
@@ -11,11 +14,13 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.curastone.Crafty.config.AzureConfig;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class AzureBlobService {
@@ -55,7 +60,39 @@ public class AzureBlobService {
     return blobs;
   }
 
-  public void zipFilesToResponse(HttpServletResponse response, String folderName) throws IOException {
+  public void unzipAndUploadToBlob(MultipartFile zipFile, String courseId) throws IOException {
+    BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
+
+    try (ZipInputStream zis = new ZipInputStream(zipFile.getInputStream())) {
+      ZipEntry zipEntry;
+
+      while ((zipEntry = zis.getNextEntry()) != null) {
+        if (zipEntry.isDirectory()) {
+          continue;
+        }
+
+        String blobPath = courseId + "/" + zipEntry.getName().replace("\\", "/");
+
+        BlobClient blobClient = containerClient.getBlobClient(blobPath);
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        byte[] temp = new byte[8192];
+        int bytesRead;
+        while ((bytesRead = zis.read(temp)) != -1) {
+          buffer.write(temp, 0, bytesRead);
+        }
+
+        byte[] fileBytes = buffer.toByteArray();
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(fileBytes);
+        blobClient.upload(inputStream, fileBytes.length, true); // Overwrite if exists
+        System.out.println("Uploaded: " + zipEntry.getName() + " to " + blobPath);
+      }
+    } catch (Exception e) {
+      throw new IOException("Failed to unzip and upload file: " + e.getMessage(), e);
+    }
+  }
+
+  public void zipFilesToResponse(HttpServletResponse response, String folderName)
+      throws IOException {
     List<BlobItem> blobs = listBlobsInFolder(folderName);
 
     if (blobs.isEmpty()) {
@@ -76,7 +113,8 @@ public class AzureBlobService {
           continue;
         }
 
-        BlobClient blobClient = blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
+        BlobClient blobClient =
+            blobServiceClient.getBlobContainerClient(containerName).getBlobClient(blobName);
         String relativePath = blobName.substring(folderName.length());
         ZipEntry zipEntry = new ZipEntry(relativePath);
         zipOutputStream.putNextEntry(zipEntry);
@@ -96,39 +134,4 @@ public class AzureBlobService {
       throw new IOException("Failed to stream files: " + e.getMessage(), e);
     }
   }
-
-/*
-  public void uploadFolder(String localDirPath, String courseId) throws IOException {
-    File localDir = new File(localDirPath);
-    if (!localDir.exists() || !localDir.isDirectory()) {
-      throw new IOException("Local directory does not exist: " + localDirPath);
-    }
-
-    BlobContainerClient containerClient = blobServiceClient.getBlobContainerClient(containerName);
-    final String targetFolder = courseId;
-
-    try {
-      Files.walk(localDir.toPath())
-          .filter(Files::isRegularFile)
-          .forEach(
-              path -> {
-                File file = path.toFile();
-                String relativePath = localDir.toPath().relativize(path).toString();
-                BlobClient blobClient =
-                    containerClient.getBlobClient(targetFolder + "/" + relativePath);
-                blobClient.uploadFromFile(file.getAbsolutePath(), true);
-                System.out.println(
-                    "Uploaded: "
-                        + file.getAbsolutePath()
-                        + " to "
-                        + targetFolder
-                        + "/"
-                        + relativePath);
-              });
-    } catch (RuntimeException e) {
-      throw new IOException(e.getCause());
-    }
-    System.out.println("Upload complete for folder: " + targetFolder);
-  }
- */
 }
