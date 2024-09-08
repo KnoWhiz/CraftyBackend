@@ -1,6 +1,7 @@
 #!/bin/bash
 
-BASE_URL="http://localhost:8081"
+#BASE_URL="http://localhost:8081"
+BASE_URL="http://20.150.196.209:8081"
 
 function create_course() {
     echo "Creating course..."
