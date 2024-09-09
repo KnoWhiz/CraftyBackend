@@ -94,16 +94,14 @@ Download course zip file to a specified local directory and feel free to edit th
 
 <mark> we only support `note` and `script` steps editing. </mark>
 
-<span style="background-color: #0000FF">we only support `note` and `script` steps editing.</span>
-
 **The following command can be found in terminal after `note`, `script` and `video` steps.**
 ```
 ./course_cli.sh download-file --course-id <COURSE_ID> --downloadPath "Outputs"
 ```
 
 
-### Upload-file
-Upload the zip file to Azure Blob Storage under a specified course ID **after editing**.
+### Upload-file ⬆️
+Upload the zip file to Azure Blob Storage under a specified course ID <mark>after editing</mark>.
 ```
 ./course_cli.sh upload-file --course-id <COURSE_ID> -file "Outputs/xxxx.zip"
 ```
