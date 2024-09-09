@@ -44,4 +44,7 @@ public class Step {
 
   @JsonProperty("taskId")
   private String taskId;
+
+  @JsonProperty("apiKey")
+  private String apiKey;
 }

@@ -1,30 +1,32 @@
 #!/bin/bash
 
-#BASE_URL="http://localhost:8081"
+# shellcheck disable=SC1078
 BASE_URL="http://20.150.196.209:8081"
+#BASE_URL="http://localhost:8081"
 
+# shellcheck disable=SC2120
 function create_course() {
     echo "Creating course..."
 
-    RESPONSE=$(curl -s -X POST "$BASE_URL/course" \
-        -H "Content-Type: application/json" \
-        -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\"}")
-    # get CourseId
-    COURSE_ID=$(echo "$RESPONSE" | jq -r '.course_id')
+        RESPONSE=$(curl -s -X POST "$BASE_URL/course" \
+            -H "Content-Type: application/json" \
+            -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\", \"apiKey\": \"$API_KEY\"}")
 
-    if [ "$COURSE_ID" != "null" ] && [ -n "$COURSE_ID" ]; then
-      PARAMS=$(jq -n --arg topic "$TOPIC" '{topic: $topic}')
-        echo "Course created successfully with ID: $COURSE_ID"
-        echo "----------------------------------------------"
-        echo "💭Use the following command to generate chapter:"
-        #echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '$PARAMS'"
+        # Get CourseId from the response
+        COURSE_ID=$(echo "$RESPONSE" | jq -r '.course_id')
 
-        echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '{\"topic\": \""$TOPIC"\"}'"
-        echo "----------------------------------------------"
-    else
-        echo "Failed to create course. Response: $RESPONSE"
-    fi
-    echo
+        if [ "$COURSE_ID" != "null" ] && [ -n "$COURSE_ID" ]; then
+            PARAMS=$(jq -n --arg topic "$TOPIC" '{topic: $topic}')
+            echo "Course created successfully with ID: $COURSE_ID"
+            echo "----------------------------------------------"
+            echo "💭 Use the following command to generate chapter:"
+            # shellcheck disable=SC2027
+            echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '{\"topic\": \""$TOPIC"\"}'"
+            echo "----------------------------------------------"
+        else
+            echo "Failed to create course. Response: $RESPONSE"
+        fi
+        echo
 }
 
 
@@ -123,17 +125,25 @@ function create_step() {
 }
 
 function download_file() {
-    COURSE_ID=$1
-    DOWNLOAD_PATH=$2
-    echo "Course ID: $COURSE_ID"
-    echo "Download Path: $DOWNLOAD_PATH"
-    echo "Downloading files for course ID: $COURSE_ID to $DOWNLOAD_PATH..."
-    ENCODED_DOWNLOAD_PATH=$(printf '%s' "$DOWNLOAD_PATH" | jq -sRr @uri)
-    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID?downloadPath=$ENCODED_DOWNLOAD_PATH" \
-    -H "Content-Type: application/json")
-    echo "Download response: $RESPONSE"
-    echo
-    }
+    local COURSE_ID=$1
+    local DOWNLOAD_PATH=$2
+
+    if [ -z "$COURSE_ID" ] || [ -z "$DOWNLOAD_PATH" ]; then
+        echo "Usage: download_course <course_id> <downloadPath>"
+        return 1
+    fi
+
+    echo "Downloading files for course ID: $COURSE_ID..."
+
+    mkdir -p "$DOWNLOAD_PATH"
+    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID" -o "$DOWNLOAD_PATH/$COURSE_ID.zip")
+    if [ -f "$DOWNLOAD_PATH/$COURSE_ID.zip" ]; then
+        echo "Download completed successfully. File saved to $DOWNLOAD_PATH/$COURSE_ID.zip"
+    else
+        echo "Failed to download course files."
+        echo "Response: $RESPONSE"
+    fi
+}
 
 function check_status() {
     COURSE_ID=$1
@@ -143,13 +153,35 @@ function check_status() {
     RESPONSE=$(curl -s -X GET "$BASE_URL/step/status/$COURSE_ID?stepName=$STEP_NAME")
     echo "Status response:"
         echo "$RESPONSE" | jq .
+}
 
+function upload_file() {
+  COURSE_ID=$1
+  UPLOAD_PATH=$2
+echo "Uploading file..."
+echo "$COURSE_ID"
+echo "$UPLOAD_PATH"
+    if [ -z "$COURSE_ID" ] || [ -z "$UPLOAD_PATH" ]; then
+        echo "Course ID and file path must be provided."
+        return 1
+    fi
+    if [ ! -f "$UPLOAD_PATH" ]; then
+            echo "File does not exist at path: $UPLOAD_PATH"
+            return 1
+        fi
+
+RESPONSE=$(curl -s -X PUT "$BASE_URL/step/$COURSE_ID/upload/" \
+        -F "file=@$UPLOAD_PATH")
+
+    echo "Response from server:"
+        echo "$RESPONSE"
 
 }
 
 if [ "$1" == "create-course" ]; then
-    TOPIC=$3
-    TYPE=$5
+    API_KEY=$2
+    TOPIC=$4
+    TYPE=$6
     create_course
 elif [ "$1" == "create-step" ]; then
     STEP_NAME=$5
@@ -164,6 +196,11 @@ elif [ "$1" == "check-status" ]; then
     COURSE_ID=$3
     STEP_NAME=$5
     check_status "$COURSE_ID" "$STEP_NAME"
+
+elif [ "$1" == "upload-files" ]; then
+    COURSE_ID=$3
+    UPLOAD_PATH=$5
+    upload_file "$COURSE_ID" "$UPLOAD_PATH"
 else
-    echo "Invalid command. Usage: ./course_cli.sh [create-course | create-step]"
+    echo "Invalid command"
 fi

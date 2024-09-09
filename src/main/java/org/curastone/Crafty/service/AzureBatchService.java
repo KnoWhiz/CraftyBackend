@@ -29,12 +29,12 @@ public class AzureBatchService {
   private final String poolId;
   private final String containerImage;
   private final String containerRunOptions;
-  private final String openaiApiKey;
   private final String storageConnectionString;
   private final String containerName;
   private final String ffmpegPath;
 
   private final StepDao stepDao;
+  //private final String openaiApiKey;
   private BatchClient batchClient;
 
   //  public AzureBatchTaskStatusChecker(BatchClient batchClient) {
@@ -48,7 +48,7 @@ public class AzureBatchService {
     this.poolId = azureConfig.getPoolId();
     this.containerImage = azureConfig.getContainerImage();
     this.containerRunOptions = azureConfig.getContainerRunOptions();
-    this.openaiApiKey = azureConfig.getOpenaiApiKey();
+    //this.openaiApiKey = System.getenv("OPENAI_API_KEY");
     this.storageConnectionString = azureConfig.getStorageConnectionString();
     this.containerName = azureConfig.getContainerName();
     this.ffmpegPath = azureConfig.getFfmpegPath();
@@ -132,13 +132,12 @@ public class AzureBatchService {
     }
   }
 
-  public void submitTask(String jobId, String taskId, String commandLine) {
+  public void submitTask(String jobId, String taskId, String commandLine, String apiKey) {
     try {
-
       List<EnvironmentSetting> environmentList =
           Map.of(
                   "OPENAI_API_KEY",
-                  openaiApiKey,
+                          apiKey,
                   "AZURE_STORAGE_CONNECTION_STRING",
                   storageConnectionString,
                   "AZURE_CONTAINER_NAME",

@@ -35,4 +35,7 @@ public class Course {
 
   @JsonProperty("steps")
   private Map<String, String> steps;
+
+  @JsonProperty("apiKey")
+  private String apiKey;
 }
