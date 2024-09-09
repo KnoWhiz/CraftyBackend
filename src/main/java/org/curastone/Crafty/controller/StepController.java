@@ -1,6 +1,5 @@
 package org.curastone.Crafty.controller;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,28 +24,32 @@ public class StepController {
 
   private final AzureBatchService azureBatchService;
   private final AzureBlobService azureBlobService;
-  private final CourseDao courseDao;
 
-  @Autowired
-  public StepController(AzureBatchService azureBatchService, AzureBlobService azureBlobService, CourseDao courseDao) {
+    @Autowired
+  public StepController(AzureBatchService azureBatchService, AzureBlobService azureBlobService, CourseDao courseDao, CourseService courseService) {
     this.azureBatchService = azureBatchService;
     this.azureBlobService = azureBlobService;
-    this.courseDao = courseDao;
-  }
+    }
 
 
   @PostMapping
-  public void submitStep(@RequestBody Step step) {
+  public ResponseEntity<String> submitStep(@RequestBody Step step) {
     if (step.getCourseId() == null || step.getStepType() == null || step.getParameters() == null) {
       throw new IllegalArgumentException("Missing required parameters");
     }
+
     String jobId = "jobId-" + step.getCourseId() + "-" + step.getStepType();
     String taskId = "taskId-" + jobId;
     String commandLine = "";
     try {
+      Course course = CourseService.getCourse(step.getCourseId());
+      if (course == null || course.getApiKey() == null) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("API key is missing for the course");
+      }
       commandLine = StepService.buildCmd(step);
       azureBatchService.createBatchJob(jobId);
-      azureBatchService.submitTask(jobId, taskId, commandLine);
+      azureBatchService.submitTask(jobId, taskId, commandLine, course.getApiKey());
 
       step = step.toBuilder().jobId(jobId).build();
       azureBatchService.saveStep(step);
@@ -62,7 +65,9 @@ public class StepController {
       // return "Task Status: " ;
     } catch (Exception e) {
       throw new RuntimeException("Failed to create batch job and task", e);
-    }}
+    }
+    return null;
+  }
 
   @GetMapping("/status/{courseId}")
   public ResponseEntity<Map<String, Object>> getStepStatus(

@@ -30,13 +30,12 @@ public class CourseController {
     Map<String, Object> response = new HashMap<>();
     response.put("course_id", savedCourse.getId().toString());
     response.put("steps", savedCourse.getSteps());
-
     return ResponseEntity.ok().body(response);
   }
 
   @GetMapping("/{id}")
   public ResponseEntity<?> getCourse(@PathVariable("id") ObjectId courseId) {
-    Course course = courseService.getCourse(courseId);
+    Course course = CourseService.getCourse(courseId);
     return ResponseEntity.ok().body(buildCourseResponse(course));
   }
 

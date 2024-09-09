@@ -1,32 +1,32 @@
 #!/bin/bash
 
 # shellcheck disable=SC1078
-BASE_URL="http://20.150.196.209:8081"
-#BASE_URL="http://localhost:8081"
+#BASE_URL="http://20.150.196.209:8081"
+BASE_URL="http://localhost:8081"
 
 # shellcheck disable=SC2120
 function create_course() {
     echo "Creating course..."
 
-    RESPONSE=$(curl -s -X POST "$BASE_URL/course" \
-        -H "Content-Type: application/json" \
-        -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\"}")
-    # get CourseId
-    COURSE_ID=$(echo "$RESPONSE" | jq -r '.course_id')
+        RESPONSE=$(curl -s -X POST "$BASE_URL/course" \
+            -H "Content-Type: application/json" \
+            -d "{\"topic\": \"$TOPIC\", \"type\": \"$TYPE\", \"apiKey\": \"$API_KEY\"}")
 
-    if [ "$COURSE_ID" != "null" ] && [ -n "$COURSE_ID" ]; then
-      PARAMS=$(jq -n --arg topic "$TOPIC" '{topic: $topic}')
-        echo "Course created successfully with ID: $COURSE_ID"
-        echo "----------------------------------------------"
-        echo "💭Use the following command to generate chapter:"
-        #echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '$PARAMS'"
+        # Get CourseId from the response
+        COURSE_ID=$(echo "$RESPONSE" | jq -r '.course_id')
 
-        echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '{\"topic\": \""$TOPIC"\"}'"
-        echo "----------------------------------------------"
-    else
-        echo "Failed to create course. Response: $RESPONSE"
-    fi
-    echo
+        if [ "$COURSE_ID" != "null" ] && [ -n "$COURSE_ID" ]; then
+            PARAMS=$(jq -n --arg topic "$TOPIC" '{topic: $topic}')
+            echo "Course created successfully with ID: $COURSE_ID"
+            echo "----------------------------------------------"
+            echo "💭 Use the following command to generate chapter:"
+            # shellcheck disable=SC2027
+            echo "./course_cli.sh create-step --course-id \"$COURSE_ID\" --step chapter --parameters '{\"topic\": \""$TOPIC"\"}'"
+            echo "----------------------------------------------"
+        else
+            echo "Failed to create course. Response: $RESPONSE"
+        fi
+        echo
 }
 
 
@@ -124,18 +124,6 @@ function create_step() {
     echo
 }
 
-#function download_file() {
-#    COURSE_ID=$1
-#    DOWNLOAD_PATH=$2
-#    echo "Course ID: $COURSE_ID"
-#    echo "Download Path: $DOWNLOAD_PATH"
-#    echo "Downloading files for course ID: $COURSE_ID to $DOWNLOAD_PATH..."
-#    ENCODED_DOWNLOAD_PATH=$(printf '%s' "$DOWNLOAD_PATH" | jq -sRr @uri)
-#    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID?downloadPath=$ENCODED_DOWNLOAD_PATH" \
-#    -H "Content-Type: application/json")
-#    echo "Download response: $RESPONSE"
-#    echo
-#    }
 function download_file() {
     local COURSE_ID=$1
     local DOWNLOAD_PATH=$2
@@ -147,13 +135,8 @@ function download_file() {
 
     echo "Downloading files for course ID: $COURSE_ID..."
 
-    # Create output directory if it doesn't exist
     mkdir -p "$DOWNLOAD_PATH"
-
-    # Send the request and handle the response
-    RESPONSE=$(curl -s -X GET "$BASE_URL/download/$COURSE_ID" -o "$DOWNLOAD_PATH/$COURSE_ID.zip")
-
-    # Check if the file was downloaded successfully
+    RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID" -o "$DOWNLOAD_PATH/$COURSE_ID.zip")
     if [ -f "$DOWNLOAD_PATH/$COURSE_ID.zip" ]; then
         echo "Download completed successfully. File saved to $DOWNLOAD_PATH/$COURSE_ID.zip"
     else
@@ -174,23 +157,31 @@ function check_status() {
 
 function upload_file() {
   COURSE_ID=$1
-      UPLOAD_PATH=$2
-      echo "Uploading files for course ID: $COURSE_ID from path: $UPLOAD_PATH..."
+  UPLOAD_PATH=$2
+echo "Uploading file..."
+echo "$COURSE_ID"
+echo "$UPLOAD_PATH"
+    if [ -z "$COURSE_ID" ] || [ -z "$UPLOAD_PATH" ]; then
+        echo "Course ID and file path must be provided."
+        return 1
+    fi
+    if [ ! -f "$UPLOAD_PATH" ]; then
+            echo "File does not exist at path: $UPLOAD_PATH"
+            return 1
+        fi
 
-      # Ensure UPLOAD_PATH does not include trailing slashes
-      UPLOAD_PATH=$(echo "$UPLOAD_PATH" | sed 's:/*$::')
+RESPONSE=$(curl -s -X PUT "$BASE_URL/step/$COURSE_ID/upload/" \
+        -F "file=@$UPLOAD_PATH")
 
-      RESPONSE=$(curl -s -X PUT "$BASE_URL/step/upload/$COURSE_ID?uploadPath=$UPLOAD_PATH" \
-      -H "Content-Type: application/json" \
-      --data-urlencode "uploadPath=$UPLOAD_PATH")
+    echo "Response from server:"
+        echo "$RESPONSE"
 
-      echo "Upload response: $RESPONSE"
-      echo
 }
 
 if [ "$1" == "create-course" ]; then
-    TOPIC=$3
-    TYPE=$5
+    API_KEY=$2
+    TOPIC=$4
+    TYPE=$6
     create_course
 elif [ "$1" == "create-step" ]; then
     STEP_NAME=$5
@@ -211,5 +202,5 @@ elif [ "$1" == "upload-files" ]; then
     UPLOAD_PATH=$5
     upload_file "$COURSE_ID" "$UPLOAD_PATH"
 else
-    echo "Invalid command. Usage: ./course_cli.sh [create-course | create-step]"
+    echo "Invalid command"
 fi
