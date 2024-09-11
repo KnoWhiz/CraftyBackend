@@ -67,7 +67,7 @@ function create_step() {
             echo "🟠Use the following command to check current step's status:"
             echo "./course_cli.sh check-status --course-id \"$COURSE_ID\" --step note"
             echo "----------------------------------------------"
-            echo "⏬ Use the following command to download notes and edit:"
+            echo "⏬ Use the following command to download course files and edit:"
             echo "./course_cli.sh download-files --course-id \"$COURSE_ID\" --downloadPath \"Outputs\" "
             echo "----------------------------------------------"
             ;;
@@ -90,7 +90,7 @@ function create_step() {
             echo "🟠Use the following command to check current step's status:"
             echo "./course_cli.sh check-status --course-id \"$COURSE_ID\" --step script"
             echo "----------------------------------------------"
-            echo "⏬ Use the following command to download script and edit:"
+            echo "⏬ Use the following command to download course files and edit:"
             echo "./course_cli.sh download-files --course-id \"$COURSE_ID\" --downloadPath \"Outputs\" "
             echo "----------------------------------------------"
             ;;
@@ -134,6 +134,12 @@ function download_file() {
     fi
 
     echo "Downloading files for course ID: $COURSE_ID..."
+    echo "----------------------------------------------"
+    echo "⬆️ Use the following command to upload course files AFTER EDITING:"
+    # shellcheck disable=SC2027
+    # shellcheck disable=SC2140
+    echo "./course_cli.sh upload-files --course-id ""$COURSE_ID"" -file "Outputs/"${COURSE_ID}".zip" "
+    echo "----------------------------------------------"
 
     mkdir -p "$DOWNLOAD_PATH"
     RESPONSE=$(curl -s -X GET "$BASE_URL/step/download/$COURSE_ID" -o "$DOWNLOAD_PATH/$COURSE_ID.zip")
